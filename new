@@ -1,1 +1,141 @@
+import pygame  # Imports the Pygame library for creating games (handles graphics, input, sound).
+import random  # Imports random module to generate random positions for food.
+import sys     # Imports sys module for clean exit (sys.exit()).
 
+pygame.init()  # Initializes all Pygame modules (must call before using any Pygame features).
+
+# Colors (RGB tuples for red, green, blue values)
+white = (255, 255, 255)  # Pure white.
+black = (0, 0, 0)        # Pure black. 
+red = (213, 50, 80)      # Reddish color for food.
+green = (0, 255, 0)      # Bright green for snake.
+blue = (50, 153, 213)    # Blue for backgrounds (intro/game over).
+
+# Display settings
+width, height = 700, 700 # Variables for window size set to 600x600 pixels.
+screen = pygame.display.set_mode((width, height))  # Creates the game window.
+pygame.display.set_caption('Snake Game - Arrow Keys to Move!')  # Sets window title.
+pygame.display.set_mode((width, height)).get_flags()  # Dummy call to help request window focus (minor hack).
+
+clock = pygame.time.Clock()  # Creates a clock object to control frame rate (game speed).
+snake_block = 10             # Size of snake segments and food (10x10 pixels).
+snake_speed = 15           # Game speed in frames per second (lower = slower).
+
+# Fonts for text rendering
+font_style = pygame.font.SysFont(None, 25)   # Default system font, size 25 for messages.
+score_font = pygame.font.SysFont(None, 35)   # Larger font for score.
+title_font = pygame.font.SysFont(None, 50)   # Even larger for title.
+
+def your_score(score):  # Function to display the current score.
+    value = score_font.render("Score: " + str(score), True, white)  # Renders text as an image (surface).
+    screen.blit(value, [0, 0])  # Draws the score text at top-left corner.
+
+def our_snake(snake_block, snake_list):  # Function to draw the entire snake.
+    for x in snake_list:  # Loops through each segment's coordinates.
+        pygame.draw.rect(screen, green, [x[0], x[1], snake_block, snake_block])  # Draws a green rectangle for each segment.
+
+def message(msg, color):  # Function to display centered messages (e.g., game over).
+    mesg = font_style.render(msg, True, color)  # Renders the message text.
+    screen.blit(mesg, [width / 6, height / 3])  # Draws it near the center.
+
+def game_intro():  # Intro screen function (shows before game starts).
+    intro = True  # Loop flag to keep intro running.
+    while intro:  # Main intro loop.
+        for event in pygame.event.get():  # Checks for events (like key presses or quit).
+            if event.type == pygame.QUIT:  # If window close button clicked.
+                pygame.quit()  # Shuts down Pygame.
+                sys.exit()     # Exits the program.
+            if event.type == pygame.KEYDOWN:  # If a key is pressed.
+                if event.key == pygame.K_SPACE:  # Spacebar to start.
+                    intro = False  # Exits intro loop.
+        screen.fill(blue)  # Fills screen with blue background.
+        title = title_font.render("NOBERT SNAKE GAME", True, white)  # Renders title text.
+        screen.blit(title, [width / 6, height / 3])  # Draws title.
+        msg = font_style.render("Press SPACE to Play | Arrows to Move", True, white)  # Renders instructions.
+        screen.blit(msg, [width / 6, height / 3 + 50])  # Draws instructions below title.
+        pygame.display.update()  # Updates the screen to show changes.
+        clock.tick(10)  # Limits intro to 10 FPS (smooth but not wasting CPU).
+    game_loop()  # Calls the main game function after intro.
+
+def game_loop():  # Main game loop function (where the action happens).
+    game_over = False   # Flag to end the entire game.
+    game_close = False  # Flag for game over screen (restart or quit).
+
+    x = width / 2       # Starting X position of snake head (center).
+    y = height / 2      # Starting Y position.
+    x_change = snake_block  # Initial movement: right (positive X).
+    y_change = 0        # No vertical movement initially.
+
+    snake_list = []     # List to store snake segments (head + body).
+    length_of_snake = 1 # Initial snake length (just head).
+
+    foodx = round(random.randrange(0, width - snake_block) / 10.0) * 10.0  # Random X for food (grid-aligned).
+    foody = round(random.randrange(0, height - snake_block) / 10.0) * 10.0 # Random Y for food.
+
+    while not game_over:  # Main game loop (runs until quit or close).
+
+        while game_close:  # Game over sub-loop (shows lose screen).
+            screen.fill(blue)  # Blue background.
+            message("You Lost! Press Q-Quit or C-Play Again", black)  # Lose message.
+            your_score(length_of_snake - 1)  # Shows final score.
+            pygame.display.update()  # Updates screen.
+
+            for event in pygame.event.get():  # Event handling in lose screen.
+                if event.type == pygame.QUIT:  # Close window.
+                    game_over = True
+                    game_close = False
+                if event.type == pygame.KEYDOWN:  # Key press.
+                    if event.key == pygame.K_q:  # Q to quit.
+                        game_over = True
+                        game_close = False
+                    if event.key == pygame.K_c:  # C to restart.
+                        game_loop()  # Recalls itself for new game.
+
+        for event in pygame.event.get():  # Main event loop (keys, quit).
+            if event.type == pygame.QUIT:  # Window close.
+                game_over = True
+            if event.type == pygame.KEYDOWN:  # Arrow keys.
+                if event.key == pygame.K_LEFT and x_change != snake_block:  # Left (prevents instant reverse).
+                    x_change = -snake_block
+                    y_change = 0
+                elif event.key == pygame.K_RIGHT and x_change != -snake_block:  # Right.
+                    x_change = snake_block
+                    y_change = 0
+                elif event.key == pygame.K_UP and y_change != snake_block:  # Up.
+                    y_change = -snake_block
+                    x_change = 0
+                elif event.key == pygame.K_DOWN and y_change != -snake_block:  # Down.
+                    y_change = snake_block
+                    x_change = 0
+
+        if x >= width or x < 0 or y >= height or y < 0:  # Wall collision check.
+            game_close = True  # Triggers lose screen.
+        x += x_change  # Updates snake head X position.
+        y += y_change  # Updates snake head Y position.
+        screen.fill(black)  # Clears screen with black background.
+        pygame.draw.rect(screen, red, [foodx, foody, snake_block, snake_block])  # Draws red food.
+        snake_head = [x, y]  # Current head position.
+        snake_list.append(snake_head)  # Adds new head to list.
+        if len(snake_list) > length_of_snake:  # Removes tail if not grown.
+            del snake_list[0]
+
+        for segment in snake_list[:-1]:  # Checks body collision (excludes head).
+            if segment == snake_head:
+                game_close = True  # Self-collision → lose.
+
+        our_snake(snake_block, snake_list)  # Draws the snake.
+        your_score(length_of_snake - 1)     # Updates score display.
+
+        pygame.display.update()  # Refreshes screen.
+
+        if x == foodx and y == foody:  # Food eaten check.
+            foodx = round(random.randrange(0, width - snake_block) / 10.0) * 10.0  # New food X.
+            foody = round(random.randrange(0, height - snake_block) / 10.0) * 10.0 # New food Y.
+            length_of_snake += 1  # Snake grows.
+
+        clock.tick(snake_speed)  # Controls speed (waits to maintain FPS).
+
+    pygame.quit()  # Cleans up Pygame resources.
+    sys.exit()     # Exits program.
+
+game_intro()  # Starts the game with the intro sc
